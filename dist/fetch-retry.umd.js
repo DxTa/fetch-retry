@@ -30,6 +30,7 @@
       retries: 3,
       retryDelay: 1000,
       retryOn: [],
+      timeout: undefined,
     };
 
     defaults = Object.assign(baseDefaults, defaults);
@@ -38,6 +39,7 @@
       var retries = defaults.retries;
       var retryDelay = defaults.retryDelay;
       var retryOn = defaults.retryOn;
+      var timeout = defaults.timeout;
 
       if (init && init.retries !== undefined) {
         if (isPositiveInteger(init.retries)) {
@@ -72,7 +74,14 @@
             typeof Request !== 'undefined' && input instanceof Request
               ? input.clone()
               : input;
-          fetch(_input, init)
+          var signalTimeout = timeout
+            ? (function (ms) {
+              var ctrl = new window.AbortController();
+              setTimeout(function () { ctrl.abort(); }, ms);
+              return ctrl.signal;
+            })(timeout)
+            : null;
+          fetch(_input, Object.assign({}, init, signalTimeout ? { signal: signalTimeout, } : {}))
             .then(function (response) {
               if (Array.isArray(retryOn) && retryOn.indexOf(response.status) === -1) {
                 resolve(response);
